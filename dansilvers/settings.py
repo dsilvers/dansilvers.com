@@ -29,6 +29,7 @@ ALLOWED_HOSTS = []
 
 TEMPLATE_DIRS = (
     BASE_DIR + '/templates',
+    BASE_DIR + '/dryrate/templates',
 )
 
 # Application definition
@@ -40,7 +41,9 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'bootstrapform',
     'basesite',
+    'dryrate',
 )
 
 MIDDLEWARE_CLASSES = (

@@ -17,3 +17,4 @@ def photography(request):
 
 def contact(request):
 	return render_to_response("base/contact.html")
+

@@ -14,5 +14,8 @@ urlpatterns = patterns('',
     url(r'^coding$', 'basesite.views.coding', name='coding'),
     url(r'^photography$', 'basesite.views.photography', name='photography'),
 
+    url(r'^flying/da40-dry-calculator$', 'dryrate.views.dry_calculator', name='da40_calculator'),
+
+
     url(r'^manage/', include(admin.site.urls)),
 )

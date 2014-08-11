@@ -1,0 +1,198 @@
+{% extends "base/base.html" %}
+{% load bootstrap %}
+
+{% block header %}
+<style type="text/css">
+form.calculator div.row div.col-md-6 div.form-group label.col-lg-2 { width: 50% }
+form.calculator div.row div.col-md-6 div.form-group div.col-lg-10 { width: 50% }
+</style>
+<script type="text/javascript">
+$(document).ready(function() { 
+	$('.toggler').click(function() {
+		$(this).next().toggle();
+		return false;
+	})
+});
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header" style="margin-top:40px;">
+	<h1>N569DS (DA40-180) Dry Rate Calculator</h1>
+</div>
+
+<form class="form-horizontal calculator" role="form" method="post" action="/flying/da40-dry-calculator">
+{% csrf_token %}
+<div class="jumbotron">
+  <div class="container">
+	<div class="row">
+		<div class="col-md-6">
+			{{ form.departure_elevation|bootstrap_horizontal }}
+			{{ form.destination_elevation|bootstrap_horizontal }}
+			{{ form.distance|bootstrap_horizontal }}
+			{{ form.flight_rules|bootstrap_horizontal }}
+			{{ form.direction|bootstrap_horizontal }}
+			{{ form.weight|bootstrap_horizontal }}
+			<div class="text-center">
+				<button type="submit" class="btn btn-primary"><span class="glyphicon glyphicon-plane"></span> Calculate <span class="glyphicon glyphicon-plane"></span></button>
+			</div>
+		</div>
+		<div class="col-md-6">
+			{{ form.dry_rate|bootstrap_horizontal }}
+			{{ form.wet_rate|bootstrap_horizontal }}
+			{{ form.gas_price|bootstrap_horizontal }}
+			<div class="form-group">
+				<label class="control-label col-sm-2 col-lg-2 ">Temperature</label>
+				<div class=" col-sm-10 col-lg-10 ">
+            		<input type="text"  class="form-control" value="Standard" disabled="disabled">
+        		</div>
+        	</div>
+			<div class="form-group">
+				<label class="control-label col-sm-2 col-lg-2 ">Winds</label>
+				<div class=" col-sm-10 col-lg-10 ">
+            		<input type="text"  class="form-control" value="Calm" disabled="disabled">
+        		</div>
+        	</div>
+		</div>
+	</div>
+  </div>
+</div>
+</form>
+
+{% if altitudes %}
+
+<div class="panel panel-default">
+  <div class="panel-body">
+
+{% if cheapest_dry %}
+<h4><strong>Dry - Least Expensive:</strong> {{ cheapest_dry.description }} - ${{ cheapest_dry.dry_cost }}</h4>
+{% endif %}
+
+{% if cheapest_wet %}
+<h4><strong>Wet - Least Expensive:</strong> {{ cheapest_wet.description }} - ${{ cheapest_wet.wet_cost }}</h4>
+{% endif %}
+
+{% if fastest %}
+<h4><strong>Fastest Overall:</strong> {{ fastest.description }} - {{ fastest.time_readable }}</h4>
+{% endif %}
+
+  </div>
+</div>
+
+<ul class="nav nav-tabs" role="tablist">
+{% for altitude in altitudes %}
+	<li{% if cheapest_dry_altitude == altitude %} class="active"{% endif %}>
+		<a href="#alt{{altitude}}" role="tab" data-toggle="tab">
+			<h3>{{ altitude }}</h3>
+			{% if cheapest_dry_altitude == altitude %}<p class="bg-success" style="padding:10px;">${{ cheapest_dry.dry_cost }}</p>
+			{% elif fastest_altitude == altitude %}<p class="bg-info" style="padding:10px;">FAST</p>
+			{% else %}<p style="padding:10px;">&nbsp;</p>
+			{% endif %}
+		</a>
+	</li>
+{% endfor %}
+</ul>
+
+<div class="tab-content">
+{% for altitude, altitude_profiles in profiles.items %}
+  <div class="tab-pane {% if cheapest_dry_altitude == altitude %}active{% endif %}" id="alt{{altitude}}">
+  	{% for profile in altitude_profiles %}
+
+	<div class="panel {% if cheapest_dry == profile %}panel-success{% elif fastest == profile %}panel-info{% elif cheapest_wet == profile %}panel-info{% else %}panel-default{% endif %}">
+  		<div class="panel-heading">
+    		<h3 class="panel-title">{{ profile.description }}</h3>
+  		</div>
+  		<div class="panel-body">
+    		<div class="container">
+    			<div class="row">
+    				<div class="col-md-2"><b>Dry:</b> ${{ profile.dry_cost }}</div>
+    				<div class="col-md-2"><b>ETE:</b> {{ profile.time_readable }}</div>
+    			</div>
+    			<div class="row">
+    				<div class="col-md-2"><b>Wet:</b> ${{ profile.wet_cost }}</div>
+    				<div class="col-md-2"><b>Fuel:</b> {{ profile.gas }} gal</div>
+    			</div>    			
+    		</div>
+    		<br>
+    		<a href="#" class="toggler" style="font-size:smaller;">Show/Hide Flight Profile Table</a>
+    		<table class="table table-striped table-hover table-condensed" style="display:none;">
+    			<thead>
+    				<tr>
+    					<th colspan="2"></th>
+    					<th colspan="3" style="text-align:center; background: #e8f7ff">Rolling Totals</th>
+    					<th colspan="3" style="text-align:center">Leg Stats</th>
+    					<th colspan="3"></th>
+    				</tr>
+    				<tr>
+    					<th></th>
+    					<th></th>
+    					<th style="background: #e8f7ff">Time</th>
+    					<th style="background: #e8f7ff">Fuel</th>
+    					<th style="background: #e8f7ff">Distance</th>
+       					<th>Time</th>
+    					<th>Fuel</th>
+    					<th>Distance</th>
+    					<th>FPM</th>
+    					<th>IAS</th>
+    					<th>TAS</th>
+    				</tr>
+    			</thead>
+    			<tbody>
+    				{% for step in profile.climb.staircase %}
+    				<tr>
+    					<td>CLIMB</td>
+    					<td>{{ step.start_altitude }}' to {{ step.end_altitude }}'</td>
+    					<td>{{ step.time_total_readable }}</td>
+    					<td>{{ step.gas_total }}</td>
+    					<td>{{ step.distance_total }}</td>
+    					<td>{{ step.time_readable }}</td>
+    					<td>{{ step.gas }}</td>
+    					<td>{{ step.distance }}</td>
+    					<td>{{ step.fpm }}</td>
+    					<td>{{ step.ias }}</td>
+    					<td>{{ step.tas }}</td>
+    				</tr>    			
+    				{% endfor %}
+    				<tr class="warning">
+    					<td>CRUISE</td>
+    					<td>{{ profile.cruise.altitude }}'</td>
+    					<td>{{ profile.cruise.time_total_readable }}</td>
+    					<td>{{ profile.cruise.gas_total }}</td>
+    					<td>{{ profile.cruise.distance_total }}</td>
+    					<td>{{ profile.cruise.time_readable }}</td>
+    					<td>{{ profile.cruise.gas }}</td>
+    					<td>{{ profile.cruise.distance }}</td>
+    					<td>{{ profile.cruise.fpm }}</td>
+    					<td>{{ profile.cruise.ias }}</td>
+    					<td>{{ profile.cruise.tas }}</td>
+    				</tr>
+    				{% for step in profile.descent.staircase %}
+    				<tr>
+    					<td>DESCENT</td>
+    					<td>{{ step.start_altitude }}' to {{ step.end_altitude }}'</td>
+    					<td>{{ step.time_total_readable }}</td>
+    					<td>{{ step.gas_total }}</td>
+    					<td>{{ step.distance_total }}</td>
+    					<td>{{ step.time_readable }}</td>
+    					<td>{{ step.gas }}</td>
+    					<td>{{ step.distance }}</td>
+    					<td>{{ step.fpm }}</td>
+    					<td>{{ step.ias }}</td>
+    					<td>{{ step.tas }}</td>
+    				</tr>    			
+    				{% endfor %}    				
+    			</tbody>
+    		</table>
+  		</div>
+	</div>
+
+  	{% endfor %}
+  </div>
+{% endfor %}
+<div>
+
+{% endif %}
+
+{% endblock %}
+
